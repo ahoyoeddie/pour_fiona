@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
-    <link rel="icon" href="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2764.png">
 <head>
+    <link rel="icon" href="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2764.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pour Fiona ❤️</title>
@@ -24,11 +24,19 @@
             overflow: hidden;
         }
 
-        /* Fond animé discret */
+        #bg-image {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.4;
+            transition: background-image 1s ease-in-out;
+            z-index: -1;
+        }
+
         #bg-pattern {
             position: absolute;
-            width: 110%;
-            height: 110%;
+            width: 110%; height: 110%;
             background-image: radial-gradient(var(--secondary) 1.5px, transparent 1.5px);
             background-size: 40px 40px;
             opacity: 0.15;
@@ -37,7 +45,7 @@
 
         .container {
             position: relative;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.9);
             padding: 2.5rem;
             border-radius: 30px;
             box-shadow: 0 20px 60px rgba(214, 51, 132, 0.15);
@@ -48,8 +56,8 @@
             border: 1px solid white;
         }
 
-        h1 { color: var(--primary); font-size: 2rem; margin-bottom: 1.5rem; }
-
+        h1, h2 { color: var(--primary); font-family: 'Dancing Script', cursive; }
+        
         .btns {
             display: flex;
             justify-content: center;
@@ -69,36 +77,31 @@
             transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        #yesBtn { background: var(--primary); color: white; z-index: 100; }
+        #yesBtn, .nextBtn { background: var(--primary); color: white; }
         #noBtn { background: #adb5bd; color: white; position: relative; }
 
-        /* Style de la lettre */
-        #letterContent {
-            display: none;
-            text-align: left;
-            font-size: 1.05rem;
-            line-height: 1.7;
-            color: #333;
-        }
+        #storyContent, #ui-question, #letterContent { display: none; }
+        .active { display: block !important; }
 
-        .letter-title {
-            font-family: 'Dancing Script', cursive;
-            font-size: 2.2rem;
-            color: var(--primary);
-            margin-bottom: 1rem;
-            display: block;
-        }
+        #storyText, #textTarget { font-size: 1.05rem; line-height: 1.6; color: #444; }
 
-        .signature {
-            margin-top: 1.5rem;
-            text-align: right;
-            font-family: 'Dancing Script', cursive;
-            font-size: 1.6rem;
-            color: var(--primary);
+        /* Bouton Musique Flottant */
+        #musicToggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid var(--primary);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 100;
+            font-size: 1.2rem;
         }
-
-        .cursor { display: inline-block; width: 8px; background: var(--primary); animation: blink 0.7s infinite; margin-left: 2px; }
-        @keyframes blink { 50% { opacity: 0; } }
 
         .heart {
             position: absolute;
@@ -114,9 +117,21 @@
     </style>
 </head>
 <body>
+    <audio id="mySong" src="musique.mp3" loop></audio>
+    <div id="musicToggle" onclick="toggleMusic()">🎵</div>
+
+    <div id="bg-image"></div>
     <div id="bg-pattern"></div>
 
-    <div class="container" id="mainBox">
+    <div class="container">
+        <div id="storyContent" class="active">
+            <h2 id="storyTitle">Notre Début</h2>
+            <p id="storyText"></p>
+            <div class="btns">
+                <button class="nextBtn" onclick="nextStep()">Lire la suite ❤️</button>
+            </div>
+        </div>
+
         <div id="ui-question">
             <h1>Will you be my Valentine, Fiona?</h1>
             <div class="btns">
@@ -126,52 +141,87 @@
         </div>
 
         <div id="letterContent">
-            <span class="letter-title">Pour toi... Fiona ❤️</span>
-            <div id="textTarget"></div><span class="cursor">|</span>
-            <div id="sigTarget" class="signature"></div>
+            <h2 style="font-size: 2.2rem;">Pour toi... Fiona ❤️</h2>
+            <div id="textTarget"></div>
+            <div id="sigTarget" style="text-align: right; font-family: 'Dancing Script'; font-size: 1.6rem; color: var(--primary); margin-top: 1rem;"></div>
         </div>
     </div>
 
     <script>
+        const audio = document.getElementById('mySong');
+        let musicPlaying = false;
+
+        const photos = ["photo1.jpg", "photo2.jpg", "photo3.jpg"];
+        const titres = ["Là où tout a commencé...", "Main dans la main", "Vers demain"];
+        const textes = [
+            "Tout a commencé dans l'effervescence de ce gala, entre le 26 et le 27 juillet 2024. Je me souviens de nos regards qui se cherchaient... Dès le lendemain, nos premiers messages ont lancé cette belle période de flirt. J'étais vraiment heureux de nous découvrir.",
+            "De fil en aiguille, nous avons commencé à sortir ensemble. Les repas, les moments partagés... chaque instant a renforcé mon attachement. On a construit des souvenirs que je garde précieusement.",
+            "Aujourd'hui, même si le quotidien a un peu changé, mon affection pour toi reste la même. Pour l'avenir, je veux qu'on avance ensemble, qu'on corrige nos petits défauts et qu'on dépasse ce qui nous bloque pour que notre histoire soit la plus belle."
+        ];
+
+        let currentStep = 0;
+        const bgImage = document.getElementById('bg-image');
+        const storyTitle = document.getElementById('storyTitle');
+        const storyText = document.getElementById('storyText');
+
+        function initStory() {
+            bgImage.style.backgroundImage = `url('${photos[0]}')`;
+            storyText.innerText = textes[0];
+        }
+        initStory();
+
+        function nextStep() {
+            // Lancer la musique au premier clic
+            if(!musicPlaying) {
+                audio.play();
+                musicPlaying = true;
+            }
+
+            currentStep++;
+            if (currentStep < 3) {
+                bgImage.style.backgroundImage = `url('${photos[currentStep]}')`;
+                storyTitle.innerText = titres[currentStep];
+                storyText.innerText = textes[currentStep];
+            } else {
+                document.getElementById('storyContent').classList.remove('active');
+                document.getElementById('ui-question').classList.add('active');
+                bgImage.style.opacity = "0.2";
+            }
+        }
+
+        function toggleMusic() {
+            if (audio.paused) {
+                audio.play();
+                document.getElementById('musicToggle').innerText = "🎵";
+            } else {
+                audio.pause();
+                document.getElementById('musicToggle').innerText = "🔇";
+            }
+        }
+
+        // --- Logique Yes/No ---
         const yesBtn = document.getElementById('yesBtn');
         const noBtn = document.getElementById('noBtn');
-        const uiQuestion = document.getElementById('ui-question');
-        const letterContent = document.getElementById('letterContent');
-        const textTarget = document.getElementById('textTarget');
-        const sigTarget = document.getElementById('sigTarget');
-        
         let yesScale = 1;
 
-        // Interaction bouton NO
-        noBtn.addEventListener('mouseover', moveButton);
-        noBtn.addEventListener('click', moveButton);
-
-        function moveButton() {
+        noBtn.addEventListener('mouseover', () => {
             const x = Math.random() * (window.innerWidth - noBtn.clientWidth);
             const y = Math.random() * (window.innerHeight - noBtn.clientHeight);
             noBtn.style.position = 'fixed';
             noBtn.style.left = x + 'px';
             noBtn.style.top = y + 'px';
-
             yesScale += 0.35;
             yesBtn.style.transform = `scale(${yesScale})`;
-        }
-
-        // Ton texte personnalisé
-        const bodyText = "Chaque moment passé à tes côtés est un trésor que je garde précieusement. Je suis si reconnaissant de t'avoir dans ma vie.\n\nAujourd'hui et pour toujours, je souhaite que notre amour grandisse et s'épanouisse. Tu es mon plus beau cadeau.";
-        const footerText = "Avec tout mon amour,\nEddie Ton Valentin";
+        });
 
         yesBtn.addEventListener('click', () => {
-            uiQuestion.style.display = 'none';
-            noBtn.style.display = 'none';
-            letterContent.style.display = 'block';
+            document.getElementById('ui-question').classList.remove('active');
+            document.getElementById('letterContent').classList.add('active');
             
-            typeWriter(bodyText, textTarget, 40, () => {
-                setTimeout(() => {
-                    typeWriter(footerText, sigTarget, 60);
-                }, 500);
+            const finalBody = "Chaque moment passé à tes côtés est un trésor. Je suis si reconnaissant de t'avoir dans ma vie. Aujourd'hui et pour toujours, je souhaite que notre amour s'épanouisse. Tu es mon plus beau cadeau.";
+            typeWriter(finalBody, document.getElementById('textTarget'), 40, () => {
+                typeWriter("\n\nAvec tout mon amour, Eddie", document.getElementById('sigTarget'), 60);
             });
-            
             setInterval(spawnHeart, 150);
         });
 
@@ -182,9 +232,7 @@
                     target.innerHTML += text.charAt(i) === '\n' ? '<br>' : text.charAt(i);
                     i++;
                     setTimeout(type, speed);
-                } else if (callback) {
-                    callback();
-                }
+                } else if (callback) callback();
             }
             type();
         }
@@ -195,17 +243,11 @@
             heart.className = 'heart';
             heart.style.left = Math.random() * 100 + 'vw';
             heart.style.top = '100vh';
-            heart.style.fontSize = Math.random() * 20 + 15 + 'px';
             document.body.appendChild(heart);
             setTimeout(() => heart.remove(), 4000);
         }
-
-        // Effet parallaxe souris
-        document.addEventListener('mousemove', (e) => {
-            const x = (e.clientX - window.innerWidth / 2) * 0.02;
-            const y = (e.clientY - window.innerHeight / 2) * 0.02;
-            document.getElementById('bg-pattern').style.transform = `translate(${x}px, ${y}px)`;
-        });
     </script>
 </body>
 </html>
+
+Ajout de l'histoire et de la musique
