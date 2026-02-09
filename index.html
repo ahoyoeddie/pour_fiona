@@ -45,7 +45,7 @@
 
         .container {
             position: relative;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             padding: 2.5rem;
             border-radius: 30px;
             box-shadow: 0 20px 60px rgba(214, 51, 132, 0.15);
@@ -83,9 +83,30 @@
         #storyContent, #ui-question, #letterContent { display: none; }
         .active { display: block !important; }
 
-        #storyText, #textTarget { font-size: 1.05rem; line-height: 1.6; color: #444; }
+        #storyText, #textTarget { font-size: 1.05rem; line-height: 1.6; color: #444; text-align: left; }
 
-        /* Bouton Musique Flottant */
+        #error-msg {
+            margin-top: 25px;
+            font-size: 0.8rem;
+            color: #999;
+            font-style: italic;
+        }
+
+        /* Animation des cœurs */
+        .heart-bubble {
+            position: fixed;
+            color: var(--primary);
+            font-size: 20px;
+            pointer-events: none;
+            z-index: 99;
+            animation: floatUp 4s ease-in forwards;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+        }
+
         #musicToggle {
             position: fixed;
             bottom: 20px;
@@ -101,18 +122,6 @@
             cursor: pointer;
             z-index: 100;
             font-size: 1.2rem;
-        }
-
-        .heart {
-            position: absolute;
-            pointer-events: none;
-            animation: fly 4s linear forwards;
-            z-index: 5;
-        }
-
-        @keyframes fly {
-            0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(-100vh) scale(1.5) rotate(360deg); opacity: 0; }
         }
     </style>
 </head>
@@ -135,9 +144,10 @@
         <div id="ui-question">
             <h1>Will you be my Valentine, Fiona?</h1>
             <div class="btns">
-                <button id="yesBtn">Yes</button>
+                <button id="yesBtn" onclick="showLetter()">Yes</button>
                 <button id="noBtn">No</button>
             </div>
+            <p id="error-msg">Le bouton "No" semble avoir des problèmes techniques...</p>
         </div>
 
         <div id="letterContent">
@@ -151,7 +161,7 @@
         const audio = document.getElementById('mySong');
         let musicPlaying = false;
 
-        const photos = ["photo1.JPG", "photo2.JPG", "photo3.JPG"];
+        const photos = ["photo1.jpg", "photo2.jpg", "photo3.jpg"];
         const titres = ["Là où tout a commencé...", "Main dans la main", "Vers demain"];
         const textes = [
             "Tout a commencé dans l'effervescence de ce gala, entre le 26 et le 27 juillet 2024. Je me souviens de nos regards qui se cherchaient... Dès le lendemain, nos premiers messages ont lancé cette belle période de flirt. J'étais vraiment heureux de nous découvrir.",
@@ -171,11 +181,7 @@
         initStory();
 
         function nextStep() {
-            // Lancer la musique au premier clic
-            if(!musicPlaying) {
-                audio.play();
-                musicPlaying = true;
-            }
+            if(!musicPlaying) { audio.play().catch(e => console.log("Audio play blocked")); musicPlaying = true; }
 
             currentStep++;
             if (currentStep < 3) {
@@ -190,65 +196,78 @@
         }
 
         function toggleMusic() {
-            if (audio.paused) {
-                audio.play();
-                document.getElementById('musicToggle').innerText = "🎵";
-            } else {
-                audio.pause();
-                document.getElementById('musicToggle').innerText = "🔇";
-            }
+            if (audio.paused) { audio.play(); document.getElementById('musicToggle').innerText = "🎵"; }
+            else { audio.pause(); document.getElementById('musicToggle').innerText = "🔇"; }
         }
 
-        // --- Logique Yes/No ---
-        const yesBtn = document.getElementById('yesBtn');
+        // --- Logique du bouton No ---
         const noBtn = document.getElementById('noBtn');
-        let yesScale = 1;
+        const phrasesNo = ["Tu es sûre ?", "Réfléchis bien...", "Vraiment ?", "Réfléchis encore !", "S'il te plaît...", "Dernière chance !", "Mauvais bouton...", "Tu te trompes !"];
+        let noIdx = 0;
 
-        noBtn.addEventListener('mouseover', () => {
-            const x = Math.random() * (window.innerWidth - noBtn.clientWidth);
-            const y = Math.random() * (window.innerHeight - noBtn.clientHeight);
+        function moveNo() {
+            noBtn.innerText = phrasesNo[noIdx];
+            noIdx = (noIdx + 1) % phrasesNo.length;
+            const x = Math.random() * (window.innerWidth - noBtn.offsetWidth);
+            const y = Math.random() * (window.innerHeight - noBtn.offsetHeight);
             noBtn.style.position = 'fixed';
             noBtn.style.left = x + 'px';
             noBtn.style.top = y + 'px';
-            yesScale += 0.35;
-            yesBtn.style.transform = `scale(${yesScale})`;
-        });
-
-        yesBtn.addEventListener('click', () => {
-            document.getElementById('ui-question').classList.remove('active');
-            document.getElementById('letterContent').classList.add('active');
-            
-            const finalBody = "Chaque moment passé à tes côtés est un trésor. Je suis si reconnaissant de t'avoir dans ma vie. Aujourd'hui et pour toujours, je souhaite que notre amour s'épanouisse. Tu es mon plus beau cadeau.";
-            typeWriter(finalBody, document.getElementById('textTarget'), 40, () => {
-                typeWriter("\n\nAvec tout mon amour, Eddie", document.getElementById('sigTarget'), 60);
-            });
-            setInterval(spawnHeart, 150);
-        });
-
-        function typeWriter(text, target, speed, callback) {
-            let i = 0;
-            function type() {
-                if (i < text.length) {
-                    target.innerHTML += text.charAt(i) === '\n' ? '<br>' : text.charAt(i);
-                    i++;
-                    setTimeout(type, speed);
-                } else if (callback) callback();
-            }
-            type();
         }
 
-        function spawnHeart() {
+        noBtn.addEventListener('mouseover', moveNo);
+        noBtn.addEventListener('click', moveNo);
+
+        // --- Pluie de coeurs ---
+        function createHeart() {
             const heart = document.createElement('div');
-            heart.innerHTML = ['❤️','💖','🌸','✨'][Math.floor(Math.random()*4)];
-            heart.className = 'heart';
+            heart.classList.add('heart-bubble');
+            heart.innerHTML = ['❤️', '💖', '💝', '💕', '🌸'][Math.floor(Math.random() * 5)];
             heart.style.left = Math.random() * 100 + 'vw';
-            heart.style.top = '100vh';
+            heart.style.fontSize = Math.random() * 20 + 20 + 'px';
+            heart.style.animationDuration = Math.random() * 2 + 3 + 's';
             document.body.appendChild(heart);
-            setTimeout(() => heart.remove(), 4000);
+            setTimeout(() => heart.remove(), 5000);
+        }
+
+        // --- Logique de la Lettre Finale ---
+        function showLetter() {
+            document.getElementById('ui-question').classList.remove('active');
+            document.getElementById('letterContent').classList.add('active');
+            bgImage.style.opacity = "0.4";
+
+            // Lancer l'abondance de coeurs
+            const heartInterval = setInterval(createHeart, 150);
+            
+            const finalMsg = "Chaque moment passé à tes côtés est un trésor. Je suis si reconnaissant de t'avoir dans ma vie. Aujourd'hui et pour toujours, je souhaite que notre amour s'épanouisse. Merci d'être dans ma vie.";
+            
+            typeWriter(finalMsg, "textTarget", 50, () => {
+                document.getElementById('sigTarget').innerText = "- Ton Valentin";
+                // On ralentit un peu la pluie après l'écriture mais on la garde
+                clearInterval(heartInterval);
+                setInterval(createHeart, 600);
+            });
+        }
+
+        function typeWriter(text, elementId, speed, callback) {
+            let i = 0;
+            const element = document.getElementById(elementId);
+            element.innerHTML = "";
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                } else if (callback) {
+                    callback();
+                }
+            }
+            type();
         }
     </script>
 </body>
 </html>
+
 
 
 
